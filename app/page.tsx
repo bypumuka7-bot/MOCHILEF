@@ -71,28 +71,9 @@ const playSound = (type: 'send' | 'receive' | 'error') => {
   }
 };
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome-msg',
-      role: 'model',
-      text: '¡Hola chiguitos y chiguitas! 🎒✨ Soy Mochil, acabamos de llegar del gimnasio del colegio pero... ¡Oh, no! Me siento un poco vacía porque se me han escapado los saltos y el equilibrio por una cremallera que se quedó abierta. 😢 ¿Me podéis ayudar a recuperarlos?',
-    }
-  ]);
+function ChatInputForm({ onSend, isLoading }: { onSend: (text: string) => void, isLoading: boolean }) {
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
   const [isListening, setIsListening] = useState(false);
-  const [isTTSActive, setTTSActive] = useState(true);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const interactionCount = Math.floor(messages.length / 2);
-  const energyLevel = Math.min(100, 20 + interactionCount * 15);
-  const possibleStickers = ['👟', '🎈', '⭐', '🧩', '⚽', '🎯', '🏃', '🥇'];
-  const unlockedStickers = possibleStickers.map((item, i) => i < interactionCount ? item : '?');
-  const pegatinasCount = unlockedStickers.filter(item => item !== '?').length;
 
   const toggleListening = () => {
     if (isListening) return;
@@ -118,6 +99,66 @@ export default function ChatPage() {
     
     recognition.start();
   };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    onSend(input.trim());
+    setInput('');
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="w-full flex gap-3 sm:gap-4 h-14 sm:h-16 relative">
+      <div className="flex-1 bg-white/10 border-2 border-white/30 rounded-full h-full flex items-center px-4 sm:px-6 relative focus-within:ring-4 focus-within:ring-white/40 transition-all focus-within:bg-white/20 shadow-inner">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={isLoading}
+          placeholder="¡Escribe o habla a Mochil aquí! 📝"
+          className="w-full text-white bg-transparent outline-none placeholder:text-white/60 font-bold text-lg sm:text-lg drop-shadow-sm"
+        />
+        <button
+          type="button"
+          onClick={toggleListening}
+          className={`ml-2 p-2 rounded-full transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/20 text-white hover:bg-white/30'}`}
+          title="Hablar (Dictado por voz)"
+        >
+          {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+        </button>
+      </div>
+      <motion.button
+        type="submit"
+        disabled={!input.trim() || isLoading}
+        whileHover={input.trim() && !isLoading ? { scale: 1.05 } : {}}
+        whileTap={input.trim() && !isLoading ? { scale: 0.95 } : {}}
+        className={`h-full aspect-square rounded-full flex items-center justify-center text-2xl sm:text-3xl shadow-xl transition-all border-2 ${input.trim() && !isLoading ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-indigo-900 border-yellow-200 cursor-pointer hover:shadow-yellow-400/50' : 'bg-white/10 text-white/30 border-white/10 cursor-not-allowed'}`}
+      >
+        ➔
+      </motion.button>
+    </form>
+  );
+}
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'welcome-msg',
+      role: 'model',
+      text: '¡Hola chiguitos y chiguitas! 🎒✨ Soy Mochil, acabamos de llegar del gimnasio del colegio pero... ¡Oh, no! Me siento un poco vacía porque se me han escapado los saltos y el equilibrio por una cremallera que se quedó abierta. 😢 ¿Me podéis ayudar a recuperarlos?',
+    }
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isTTSActive, setTTSActive] = useState(true);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const interactionCount = Math.floor(messages.length / 2);
+  const energyLevel = Math.min(100, 20 + interactionCount * 15);
+  const possibleStickers = ['👟', '🎈', '⭐', '🧩', '⚽', '🎯', '🏃', '🥇'];
+  const unlockedStickers = possibleStickers.map((item, i) => i < interactionCount ? item : '?');
+  const pegatinasCount = unlockedStickers.filter(item => item !== '?').length;
 
   const speakMsg = (text: string) => {
     if (!isTTSActive || !window.speechSynthesis) return;
@@ -155,14 +196,10 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
+  const handleSubmit = async (text: string) => {
     playSound('send');
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', text: input.trim() };
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', text };
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
     setIsLoading(true);
     setError(null);
 
@@ -415,39 +452,7 @@ export default function ChatPage() {
 
           {/* Message Input */}
           <div className="shrink-0 p-4 sm:p-6 bg-black/30 border-t-2 border-white/20 flex flex-col gap-2">
-            <form onSubmit={handleSubmit} className="w-full flex gap-3 sm:gap-4 h-14 sm:h-16 relative">
-              <div className="flex-1 bg-white/10 border-2 border-white/30 rounded-full h-full flex items-center px-4 sm:px-6 relative focus-within:ring-4 focus-within:ring-white/40 transition-all focus-within:bg-white/20 shadow-inner">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isLoading}
-                  placeholder="¡Escribe o habla a Mochil aquí! 📝"
-                  className="w-full text-white bg-transparent outline-none placeholder:text-white/60 font-bold text-lg sm:text-lg drop-shadow-sm"
-                />
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`ml-2 p-2 rounded-full transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                  title="Hablar (Dictado por voz)"
-                >
-                  {isListening ? <Mic size={20} /> : <MicOff size={20} />}
-                </button>
-              </div>
-              <motion.button
-                type="submit"
-                disabled={!input.trim() || isLoading}
-                whileHover={input.trim() && !isLoading ? { scale: 1.05 } : {}}
-                whileTap={input.trim() && !isLoading ? { scale: 0.95 } : {}}
-                className={`h-full aspect-square rounded-full flex items-center justify-center text-2xl sm:text-3xl shadow-xl transition-all border-2 ${
-                  input.trim() && !isLoading 
-                    ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-indigo-900 border-yellow-200 cursor-pointer hover:shadow-yellow-400/50' 
-                    : 'bg-white/10 text-white/30 border-white/10 cursor-not-allowed'
-                }`}
-              >
-                ➔
-              </motion.button>
-            </form>
+            <ChatInputForm onSend={handleSubmit} isLoading={isLoading} />
           </div>
         </section>
       </main>
