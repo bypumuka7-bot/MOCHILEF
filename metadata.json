@@ -1,0 +1,8 @@
+{
+  "name": "MOCHILEF",
+  "description": "retos de educación física para primer ciclo",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
